@@ -30,4 +30,4 @@ For example, let's say we want to create a gfind entry for grep. A couple exampl
     # gfind: search for specific lines of text for files in a folder
 
     # with command_arguments, will complete and be executable
-    # gfind: search for the text "foo" recursively in the current directory; -r 'foo' *
+    # gfind: search for the text "foo" recursively in the current directory; grep -r 'foo' *
