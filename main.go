@@ -15,6 +15,7 @@ Usage:
 	arguments, _ := docopt.Parse(usage, nil, true, "garage 0.1", false)
 	fmt.Println(arguments)
 
-	garageMatcher := new(garage.GarageMatcher)
+	repository := garage.LoadGarageRepository("/home/tsutsumi/workspace/sub/libexec")
+	garageMatcher := garage.CreateMatcherFromRepository(repository)
 	garageMatcher.Start()
 }
