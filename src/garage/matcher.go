@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	AUTOCOMPLETEPREFIX = "gfind:"
-	MESSAGEARGUMENTSSEPARATOR = ";"
+	AUTOCOMPLETE_PREFIX = "gfind:"
+	MESSAGE_ARGUMENT_SEPARATOR = ";"
 )
 
 // represents a single entry in the autocomplete library
@@ -25,51 +25,92 @@ type CompleteEntry struct {
 type GarageMatcher struct {
 	candidates []CompleteEntry
 	matcher fuzzy.Matcher
+	completed bool
+	screen *goncurses.Screen
+}
+
+func (gm* GarageMatcher) initWindow() *goncurses.Window {
+
+	input, err := os.OpenFile("/dev/tty", 0, 0444)
+	if err != nil {
+		log.Fatal("initWindow: ", err)
+	}
+	output, err := os.OpenFile("/dev/tty", 0, 0222)
+	if err != nil {
+		log.Fatal("initWindow: ", err)
+	}
+
+	screen, err := goncurses.NewTerm("", output, input)
+	if err != nil {
+		log.Fatal("initWindow: ", err)
+	}
+
+	screen.Set()
+	gm.screen = screen
+	return goncurses.StdScr()
 }
 
 func (gm *GarageMatcher) Start() {
-	screen, err := goncurses.Init()
-	if err != nil {
-		log.Fatal("init: ", err)
-	}
-	defer goncurses.End()
+	gm.completed = false
+
+	window := gm.initWindow()
 
 	// we handle printing characters ourselves
 	goncurses.Echo(false)
 
-	screen.Print("Garage Complete")
+	window.Print("Garage Complete")
 	i := 1
 
-	screen.Move(i, 0)
-	screen.Printf("%d completions found", len(gm.candidates))
+	window.Move(i, 0)
+	window.Printf("%d total completions found", len(gm.candidates))
 	i++
 
-	screen.MovePrint(i, 0, "I want to: ")
 	input := ""
-	completed := false
-	for(!completed) {
-		char := screen.GetChar()
+	command := ""
+	for(!gm.completed) {
+		currentCandidates := gm.matcher.ClosestList(input, 10)
+		printMatches(window, currentCandidates, i + 1)
+		window.Move(i, 0)
+		window.ClearToEOL()
+		window.MovePrint(i, 0, "I want to: " + input)
+
+		char := window.GetChar()
 		switch char {
+		case 127:
+			// backspace
+			if len(input) > 0 {
+				input = input[0: len(input) - 1]
+			}
+			continue
 		case goncurses.KEY_RETURN:
-			completed = true
+			gm.completed = true
+			command = currentCandidates[0].Data["Command"]
 			continue
 		case 27:
 			// escape key
-			completed = true
+			gm.Stop()
 			continue
 		}
 		input += string(char)
-		screen.MovePrint(i, 12, input)
-		currentCandidates := gm.matcher.ClosestList(input, 10)
-		printMatches(screen, currentCandidates, i + 1)
-		screen.Move(i, 12 + len(input))
 	}
+	gm.Stop()
+	fmt.Println(command)
+}
+
+func (gm* GarageMatcher) Stop() {
+	if (gm.screen != nil) {
+		gm.screen.End()
+		gm.screen.Delete()
+	}
+	gm.completed = true
 }
 
 func NewGarageMatcher(completeEntries []CompleteEntry) *GarageMatcher {
 	return &GarageMatcher{
 		completeEntries,
 		createMatcher(completeEntries),
+		false,
+		nil,
 	}
 }
 
@@ -101,14 +142,6 @@ func printMatches(screen *goncurses.Window, candidates fuzzy.Matches, rowToDraw 
 		)
 		screen.MovePrint(rowToDraw, 0, entryString)
 		rowToDraw++
-	}
-}
-
-func getAutoCompleteCandidates() []CompleteEntry{
-	return []CompleteEntry{
-		CompleteEntry { "find all files in a directory", "find -r *" },
-		CompleteEntry { "write to a file", "cat"},
-		CompleteEntry { "copy a directory", "cp -r"},
 	}
 }
 
@@ -147,11 +180,11 @@ func addCompletionFromScript(completeEntries []CompleteEntry, script string) []C
 }
 
 func getCompleteEntryFromString(line string) *CompleteEntry {
-	splitString := strings.Split(line, AUTOCOMPLETEPREFIX)
+	splitString := strings.Split(line, AUTOCOMPLETE_PREFIX)
 	if len(splitString) == 1 {
 		return nil
 	}
-	entryString := strings.Split(splitString[1], MESSAGEARGUMENTSSEPARATOR)
+	entryString := strings.Split(splitString[1], MESSAGE_ARGUMENT_SEPARATOR)
 	if len(entryString) == 1 {
 		return &CompleteEntry{strings.TrimSpace(entryString[0]), ""}
 	} else {
