@@ -33,6 +33,11 @@ Options:
 	repository := garage.LoadGarageRepository(directory)
 	garageMatcher := garage.CreateMatcherFromRepository(repository)
 
+	gui := garage.NewDefaultGui()
+	gui.Print("hello world!")
+	gui.Clear(5)
+	gui.GetChar()
+
 	// start the listener
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
