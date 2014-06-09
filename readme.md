@@ -31,3 +31,15 @@ For example, let's say we want to create a gfind entry for grep. A couple exampl
 
     # with command_arguments, will complete and be executable
     # gfind: search for the text "foo" recursively in the current directory; grep -r 'foo' *
+
+
+# installing garage
+
+to install garage, there must be a shell function wrapper around
+it. (applications can not explicitely execute commands)
+
+There is some magic that happens here, but effectively you must add this to your .rc (.bashrc/.zrc/etc):
+
+    function garage() {
+        `PATH_TO_GARAGE/garage 3>&1 1>&2`
+    }

@@ -31,7 +31,7 @@ type GarageMatcher struct {
 
 func (gm* GarageMatcher) initWindow() *goncurses.Window {
 
-	input, err := os.OpenFile("/dev/tty", 0, 0444)
+	/* input, err := os.OpenFile("/dev/tty", 0, 0444)
 	if err != nil {
 		log.Fatal("initWindow: ", err)
 	}
@@ -48,6 +48,13 @@ func (gm* GarageMatcher) initWindow() *goncurses.Window {
 	screen.Set()
 	gm.screen = screen
 	return goncurses.StdScr()
+  */
+
+	window, err := goncurses.Init()
+	if err != nil {
+		log.Fatal("initWindow:", err)
+	}
+	return window
 }
 
 func (gm *GarageMatcher) Start() {
@@ -95,13 +102,22 @@ func (gm *GarageMatcher) Start() {
 	}
 	gm.Stop()
 	fmt.Println(command)
+	writeToFileDescriptor(command)
+}
+
+func writeToFileDescriptor(message string) {
+	// write to file descriptor three, a hack to be able
+	// to execute functions and also have an ncurses interface
+	file := os.NewFile(3, "mythicalthree")
+	file.Write([]byte(message))
 }
 
 func (gm* GarageMatcher) Stop() {
-	if (gm.screen != nil) {
+	/* if (gm.screen != nil) {
 		gm.screen.End()
 		gm.screen.Delete()
-	}
+	} */
+	goncurses.End()
 	gm.completed = true
 }
 
