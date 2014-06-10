@@ -5,7 +5,7 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/toumorokoshi/go-fuzzy/fuzzy"
-	"code.google.com/p/goncurses"
+  "github.com/nsf/termbox-go"
 	"log"
 	"strings"
 )
@@ -26,79 +26,75 @@ type GarageMatcher struct {
 	candidates []CompleteEntry
 	matcher fuzzy.Matcher
 	completed bool
-	screen *goncurses.Screen
+	gui *Gui
 }
 
-func (gm* GarageMatcher) initWindow() *goncurses.Window {
+func draw(g *Gui, input string, candidates fuzzy.Matches) {
+	// draw the garagecomplete
+	g.Clear()
+	g.PrintString(0, 0, "Garage Complete")
+	completionsFound := fmt.Sprintf(
+		"%d total completions found",
+		len(candidates),
+	)
+	g.PrintString(0, 1, completionsFound)
+	g.PrintString(0, 2, "I want to: " + input)
 
-	/* input, err := os.OpenFile("/dev/tty", 0, 0444)
-	if err != nil {
-		log.Fatal("initWindow: ", err)
+	row := 3
+	for i := range candidates {
+		entryString := fmt.Sprintf("%d: %s ; %s",
+			i + 1,
+			candidates[i].Value,
+			candidates[i].Data["Command"],
+		)
+		g.PrintString(row, 0, entryString)
+		row++
 	}
-	output, err := os.OpenFile("/dev/tty", 0, 0222)
-	if err != nil {
-		log.Fatal("initWindow: ", err)
-	}
-
-	screen, err := goncurses.NewTerm("", output, input)
-	if err != nil {
-		log.Fatal("initWindow: ", err)
-	}
-
-	screen.Set()
-	gm.screen = screen
-	return goncurses.StdScr()
-  */
-
-	window, err := goncurses.Init()
-	if err != nil {
-		log.Fatal("initWindow:", err)
-	}
-	return window
 }
 
 func (gm *GarageMatcher) Start() {
 	gm.completed = false
 
-	window := gm.initWindow()
-
-	// we handle printing characters ourselves
-	goncurses.Echo(false)
-
-	window.Print("Garage Complete")
-	i := 1
-
-	window.Move(i, 0)
-	window.Printf("%d total completions found", len(gm.candidates))
-	i++
+	window := &Gui{}
+	gm.gui = window
 
 	input := ""
 	command := ""
-	for(!gm.completed) {
+	for !gm.completed {
 		currentCandidates := gm.matcher.ClosestList(input, 10)
-		printMatches(window, currentCandidates, i + 1)
-		window.Move(i, 0)
-		window.ClearToEOL()
-		window.MovePrint(i, 0, "I want to: " + input)
+		draw(window, input, currentCandidates)
 
-		char := window.GetChar()
-		switch char {
-		case 127:
+		switch event := window.PollEvent(); event.Type {
+		case termbox.EventKey:
+
+			switch event.Key {
+
 			// backspace
-			if len(input) > 0 {
-				input = input[0: len(input) - 1]
+			case termbox.KeyBackspace:
+				if len(input) > 0 {
+					input = input[0: len(input) - 1]
+				}
+				continue
+
+			// shutdown commands
+			case termbox.KeyEsc:
+				gm.Stop()
+				continue
+
+			case termbox.KeyCtrlC:
+				gm.Stop()
+				continue
+
+			// succesful command
+			case termbox.KeyEnter:
+				gm.completed = true
+				command = currentCandidates[0].Data["Command"]
+				continue
+
+			default:
+				input += string(event.Key)
 			}
-			continue
-		case goncurses.KEY_RETURN:
-			gm.completed = true
-			command = currentCandidates[0].Data["Command"]
-			continue
-		case 27:
-			// escape key
-			gm.Stop()
-			continue
 		}
-		input += string(char)
 	}
 	gm.Stop()
 	fmt.Println(command)
@@ -113,11 +109,7 @@ func writeToFileDescriptor(message string) {
 }
 
 func (gm* GarageMatcher) Stop() {
-	/* if (gm.screen != nil) {
-		gm.screen.End()
-		gm.screen.Delete()
-	} */
-	goncurses.End()
+	gm.gui.Stop()
 	gm.completed = true
 }
 
@@ -144,20 +136,6 @@ func createMatchStruct(completeEntry CompleteEntry) fuzzy.MatchStruct {
 		map[string]string {
 			"Command": completeEntry.Command,
 		},
-	}
-}
-
-func printMatches(screen *goncurses.Window, candidates fuzzy.Matches, rowToDraw int) {
-	for i := range candidates {
-		screen.Move(rowToDraw, 0)
-		screen.ClearToEOL()
-		entryString := fmt.Sprintf("%d: %s ; %s",
-			i + 1,
-			candidates[i].Value,
-			candidates[i].Data["Command"],
-		)
-		screen.MovePrint(rowToDraw, 0, entryString)
-		rowToDraw++
 	}
 }
 
