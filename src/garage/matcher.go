@@ -47,9 +47,10 @@ func draw(g *Gui, input string, candidates fuzzy.Matches) {
 			candidates[i].Value,
 			candidates[i].Data["Command"],
 		)
-		g.PrintString(row, 0, entryString)
+		g.PrintString(0, row, entryString)
 		row++
 	}
+	g.Flush()
 }
 
 func (gm *GarageMatcher) Start() {
@@ -57,6 +58,7 @@ func (gm *GarageMatcher) Start() {
 
 	window := &Gui{}
 	gm.gui = window
+	termbox.Init()
 
 	input := ""
 	command := ""
@@ -76,23 +78,34 @@ func (gm *GarageMatcher) Start() {
 				}
 				continue
 
+			// delete
+			case termbox.KeyDelete:
+				if len(input) > 0 {
+					input = input[0: len(input) - 1]
+				}
+				continue
+
 			// shutdown commands
 			case termbox.KeyEsc:
 				gm.Stop()
-				continue
+				return
 
 			case termbox.KeyCtrlC:
 				gm.Stop()
-				continue
+				return
 
 			// succesful command
 			case termbox.KeyEnter:
 				gm.completed = true
 				command = currentCandidates[0].Data["Command"]
-				continue
+
+			case termbox.KeySpace:
+				input += string(" ")
 
 			default:
-				input += string(event.Key)
+				if event.Ch != 0 {
+					input += string(event.Ch)
+				}
 			}
 		}
 	}

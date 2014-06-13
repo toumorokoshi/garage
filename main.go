@@ -1,10 +1,7 @@
 package main
 
-import "log"
-import "os"
 import "github.com/docopt/docopt-go"
 import "garage"
-import "os/signal"
 
 const (
 	DEFAULT_DIRECTORY = "."
@@ -32,32 +29,5 @@ Options:
 
 	repository := garage.LoadGarageRepository(directory)
 	garageMatcher := garage.CreateMatcherFromRepository(repository)
-
-	gui := garage.Gui{}
-	gui.Start()
-	defer gui.Stop()
-
-
-	// start the listener
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	go func(){
-		for sig := range(c) {
-			log.Print(sig)
-			gui.Stop()
-			os.Exit(0)
-		}
-	}()
-
-	// start the listener
-	go func(garageMatcher *garage.GarageMatcher){
-		for sig := range(c) {
-			log.Print(sig)
-			garageMatcher.Stop()
-			os.Exit(0)
-		}
-	}(garageMatcher)
-
 	garageMatcher.Start()
-
 }

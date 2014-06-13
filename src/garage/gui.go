@@ -28,6 +28,10 @@ func (g* Gui) PrintString(x, y int, s string) {
 		fontColor := termbox.ColorRed
 		bgColor := termbox.ColorDefault
 		termbox.SetCell(x, y, r, fontColor, bgColor)
-		x++
+		x ++
 	}
+}
+
+func (g* Gui) Flush() {
+	termbox.Flush()
 }
