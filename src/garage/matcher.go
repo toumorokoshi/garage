@@ -23,32 +23,36 @@ type CompleteEntry struct {
 
 
 type GarageMatcher struct {
+	name string
 	candidates []CompleteEntry
 	matcher fuzzy.Matcher
 	completed bool
 	gui *Gui
 }
 
-func draw(g *Gui, input string, candidates fuzzy.Matches) {
+func draw(g *Gui, input, name string, candidates fuzzy.Matches) {
 	// draw the garagecomplete
+	line := 0
 	g.Clear()
-	g.PrintString(0, 0, "Garage Complete")
+	g.PrintString(0, line, "==============="); line++
+	g.PrintString(0, line, name); line++
+	g.PrintString(0, line, "==============="); line++
 	completionsFound := fmt.Sprintf(
-		"%d total completions found",
+		"(%d total completions found)",
 		len(candidates),
 	)
-	g.PrintString(0, 1, completionsFound)
-	g.PrintString(0, 2, "I want to: " + input)
+	g.PrintString(0, line, completionsFound); line++
+	line++
+	g.PrintString(0, line, "I want to: " + input); line++
 
-	row := 3
 	for i := range candidates {
-		entryString := fmt.Sprintf("%d: %s ; %s",
+		entryString := fmt.Sprintf("Ctrl+%d: %s ; %s",
 			i + 1,
 			candidates[i].Value,
 			candidates[i].Data["Command"],
 		)
-		g.PrintString(0, row, entryString)
-		row++
+		g.PrintString(0, line, entryString)
+		line++
 	}
 	g.Flush()
 }
@@ -64,7 +68,7 @@ func (gm *GarageMatcher) Start() {
 	command := ""
 	for !gm.completed {
 		currentCandidates := gm.matcher.ClosestList(input, 10)
-		draw(window, input, currentCandidates)
+		draw(window, input, gm.name, currentCandidates)
 
 		switch event := window.PollEvent(); event.Type {
 		case termbox.EventKey:
@@ -72,29 +76,22 @@ func (gm *GarageMatcher) Start() {
 			switch event.Key {
 
 			// backspace
-			case termbox.KeyBackspace:
-				if len(input) > 0 {
-					input = input[0: len(input) - 1]
-				}
-				continue
+			case
+				termbox.KeyBackspace,
+				termbox.KeyBackspace2,
+				termbox.KeyDelete:
 
-			// delete
-			case termbox.KeyDelete:
 				if len(input) > 0 {
 					input = input[0: len(input) - 1]
 				}
 				continue
 
 			// shutdown commands
-			case termbox.KeyEsc:
+			case termbox.KeyEsc, termbox.KeyCtrlC:
 				gm.Stop()
 				return
 
-			case termbox.KeyCtrlC:
-				gm.Stop()
-				return
-
-			// succesful command
+			// successful command
 			case termbox.KeyEnter:
 				gm.completed = true
 				command = currentCandidates[0].Data["Command"]
@@ -126,8 +123,9 @@ func (gm* GarageMatcher) Stop() {
 	gm.completed = true
 }
 
-func NewGarageMatcher(completeEntries []CompleteEntry) *GarageMatcher {
+func NewGarageMatcher(completeEntries []CompleteEntry, name string) *GarageMatcher {
 	return &GarageMatcher{
+		name,
 		completeEntries,
 		createMatcher(completeEntries),
 		false,
@@ -152,7 +150,7 @@ func createMatchStruct(completeEntry CompleteEntry) fuzzy.MatchStruct {
 	}
 }
 
-func CreateMatcherFromRepository(repository *GarageRepository) *GarageMatcher {
+func CreateMatcherFromRepository(repository *GarageRepository, name string) *GarageMatcher {
 	// create a matcher from a garage repository
 	completeEntries := make(
 		[]CompleteEntry,
@@ -163,7 +161,7 @@ func CreateMatcherFromRepository(repository *GarageRepository) *GarageMatcher {
 		fullScriptPath := strings.Join([]string{repository.RootPath, script}, "/")
 		completeEntries = addCompletionFromScript(completeEntries, fullScriptPath)
 	}
-	return NewGarageMatcher(completeEntries)
+	return NewGarageMatcher(completeEntries, name)
 }
 
 func addCompletionFromScript(completeEntries []CompleteEntry, script string) []CompleteEntry {

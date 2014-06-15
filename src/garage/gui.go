@@ -25,7 +25,7 @@ func (g* Gui) PollEvent() termbox.Event {
 
 func (g* Gui) PrintString(x, y int, s string) {
 	for _, r := range s {
-		fontColor := termbox.ColorRed
+		fontColor := termbox.ColorDefault
 		bgColor := termbox.ColorDefault
 		termbox.SetCell(x, y, r, fontColor, bgColor)
 		x ++
