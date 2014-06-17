@@ -46,7 +46,7 @@ func draw(g *Gui, input, name string, candidates fuzzy.Matches) {
 	g.PrintString(0, line, "I want to: " + input); line++
 
 	for i := range candidates {
-		entryString := fmt.Sprintf("Ctrl+%d: %s ; %s",
+		entryString := fmt.Sprintf("%d: %s ; %s",
 			i + 1,
 			candidates[i].Value,
 			candidates[i].Data["Command"],
@@ -67,7 +67,7 @@ func (gm *GarageMatcher) Start() {
 	input := ""
 	command := ""
 	for !gm.completed {
-		currentCandidates := gm.matcher.ClosestList(input, 10)
+		currentCandidates := gm.matcher.ClosestList(input, 8)
 		draw(window, input, gm.name, currentCandidates)
 
 		switch event := window.PollEvent(); event.Type {
@@ -101,7 +101,15 @@ func (gm *GarageMatcher) Start() {
 
 			default:
 				if event.Ch != 0 {
-					input += string(event.Ch)
+					if event.Ch > 48 && event.Ch < 58 {
+						num := int(event.Ch) - 48
+						if len(currentCandidates) > num {
+							gm.completed = true
+							command = currentCandidates[num - 1].Data["Command"]
+						}
+					} else {
+						input += string(event.Ch)
+					}
 				}
 			}
 		}
